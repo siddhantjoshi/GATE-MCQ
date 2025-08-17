@@ -1,4 +1,4 @@
-# GATE ECE MCQ Builder
+# [GATE ECE MCQ Builder](https://siddhantjoshi.github.io/GATE-MCQ/)
 
 A simple **single-page quiz app** to practice GATE ECE-style MCQs with proper **marking scheme, explanations, and shortcuts**.
 
