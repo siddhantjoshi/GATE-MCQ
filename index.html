@@ -5,6 +5,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GATE MCQ Builder</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -105,22 +108,15 @@
 
         .opt.correct {
             border-color: #218838;
-            /* deeper green */
             background: #28a745;
-            /* strong green */
             color: #fff;
-            /* white text for contrast */
         }
 
         .opt.wrong {
             border-color: #c82333;
-            /* deeper red */
             background: #dc3545;
-            /* strong red */
             color: #fff;
-            /* white text for contrast */
         }
-
 
         .opt.disabled {
             opacity: .6;
@@ -161,30 +157,38 @@
             document.getElementById('resetBtn').onclick = () => { score = 0; scoreEl.textContent = 0; quizEl.innerHTML = '' };
             document.getElementById('buildBtn').onclick = () => {
                 score = 0; scoreEl.textContent = 0; quizEl.innerHTML = '';
-                const data = parsePrompt(inputEl.value.trim()); renderQuiz(data)
+                const data = parsePrompt(inputEl.value.trim()); renderQuiz(data); MathJax.typesetPromise();
             };
             function parsePrompt(raw) {
                 const res = { questions: [], answers: {} };
                 const parts = raw.split(/##+\s*Answer Key/i);
                 const qPart = parts[0] || raw, aPart = parts[1] || '';
-                const blocks = qPart.split(/\n\*{3,}\n/g).filter(b => /Q\d+/i.test(b));
+                const blocks = qPart.split(/---|\n\s*\n/g).filter(b => /Q\d+/i.test(b));
                 blocks.forEach(b => {
-                    const qm = b.match(/Q\s*(\d+)\.\s*(.*)/i);
-                    if (!qm) return; const qnum = parseInt(qm[1]), qtext = qm[2];
-                    const opts = {}, optRe = /^\s*\(?([A-D])\)?[.)]?\s*(.+)$/i;
+                    const qm = b.match(/Q\s*(\d+)\.\s*([\s\S]*)/i);
+                    if (!qm) return; const qnum = parseInt(qm[1]), qtext = qm[2].split(/\n/)[0];
+                    const opts = {}, optRe = /^\s*\(?([A-D])\)?[.)]\s*([\s\S]+)/i;
                     b.split('\n').forEach(l => { const m = l.match(optRe); if (m) opts[m[1].toUpperCase()] = m[2] });
                     if (Object.keys(opts).length === 4)
                         res.questions.push({ qnum, qtext, options: ['A', 'B', 'C', 'D'].map(k => ({ key: k, text: opts[k] })) });
                 });
-                aPart.split('\n').forEach(l => {
-                    const m = l.match(/^Q\s*(\d+).*Ans[:\-]\s*([A-D])/i); if (!m) return;
+                aPart.split(/\n\s*\n|\n/).forEach(l => {
+                    const m = l.match(/Q\s*(\d+)\s*→\s*Ans:?\s*\(?([A-D])\)?/i);
+                    if (!m) return;
                     const qn = parseInt(m[1]), ans = m[2].toUpperCase();
-                    const exp = (l.match(/Exp[:\-]\s*(.*?)(?:\||$)/i) || [])[1] || '';
-                    const sc = (l.match(/Shortcut[:\-]\s*(.*?)(?:\||$)/i) || [])[1] || '';
-                    const lvl = (l.match(/Level[:\-]\s*(\w+)/i) || [])[1] || '';
-                    const year = (l.match(/GATE\s*\d{4}/i) || [])[0] || (/New Q/i.test(l) ? 'New' : '');
-                    const marks = (l.match(/Marks[:\-]\s*(\d+)/i) || [])[1] || '1';
-                    res.answers[qn] = { correct: ans, exp, shortcut: sc, level: lvl, year, marks: parseInt(marks) };
+                    const expMatch = l.match(/Exp:?\**\s*([\s\S]*?)(?=\*\*|$)/i);
+                    const scMatch = l.match(/Shortcut:?\**\s*([\s\S]*?)(?=\*\*|$)/i);
+                    const lvlMatch = l.match(/Level:?\**\s*(\w+)/i);
+                    const year = (/New Q/i.test(l) ? 'New' : '');
+                    const marksMatch = l.match(/Marks[:\-]\s*(\d+)/i);
+                    res.answers[qn] = {
+                        correct: ans,
+                        exp: expMatch ? expMatch[1].trim() : '',
+                        shortcut: scMatch ? scMatch[1].trim() : '',
+                        level: lvlMatch ? lvlMatch[1] : '',
+                        year,
+                        marks: marksMatch ? parseInt(marksMatch[1]) : 1
+                    };
                 });
                 return res;
             }
@@ -210,7 +214,7 @@
                                 if (corr) corr.classList.add('correct');
                                 if (ansData.marks === 2) setScore(-2 / 3); else setScore(-1 / 3);
                             }
-                            ans.classList.add('show');
+                            ans.classList.add('show'); MathJax.typesetPromise();
                         };
                         opts.appendChild(btn);
                     });
@@ -221,6 +225,7 @@
                      ${ansData.shortcut ? '<div><b>Shortcut:</b> ' + ansData.shortcut + '</div>' : ''}`;
                     card.appendChild(ans); quizEl.appendChild(card);
                 });
+                MathJax.typesetPromise();
             }
         })();
     </script>
