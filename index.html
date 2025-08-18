@@ -1,234 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GATE MCQ Builder</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            background: #f7f7fb;
-            margin: 0
-        }
-
-        header {
-            background: #fff;
-            border-bottom: 1px solid #ddd;
-            padding: 10px 16px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            display: flex;
-            align-items: center
-        }
-
-        header h1 {
-            font-size: 16px;
-            margin: 0;
-            font-weight: 600
-        }
-
-        .score {
-            margin-left: auto;
-            font-weight: bold
-        }
-
-        .wrap {
-            max-width: 1100px;
-            margin: 16px auto;
-            padding: 0 16px
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 200px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px
-        }
-
-        button {
-            padding: 8px 14px;
-            margin: 8px 6px 20px 0;
-            border: 0;
-            border-radius: 6px;
-            background: #1a73e8;
-            color: #fff;
-            cursor: pointer
-        }
-
-        button.secondary {
-            background: #6c757d
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px
-        }
-
-        .card {
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
-            display: flex;
-            flex-direction: column
-        }
-
-        .q {
-            padding: 12px;
-            border-bottom: 1px solid #f1f1f1
-        }
-
-        .q h3 {
-            margin: 0;
-            font-size: 15px
-        }
-
-        .opts {
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px
-        }
-
-        .opt {
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 8px;
-            background: #fafafa;
-            cursor: pointer;
-            text-align: left
-        }
-
-        .opt.correct {
-            border-color: #218838;
-            background: #28a745;
-            color: #fff;
-        }
-
-        .opt.wrong {
-            border-color: #c82333;
-            background: #dc3545;
-            color: #fff;
-        }
-
-        .opt.disabled {
-            opacity: .6;
-            pointer-events: none
-        }
-
-        .ans {
-            border-top: 1px dashed #ddd;
-            padding: 12px;
-            display: none;
-            font-size: 14px;
-            background: #fcfcff
-        }
-
-        .ans.show {
-            display: block
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GATE MCQ Builder</title>
+  <style>
+    body {font-family:sans-serif;background:#f7f7fb;margin:0}
+    header {background:#fff;border-bottom:1px solid #ddd;padding:10px 16px;position:sticky;top:0;z-index:10;display:flex;align-items:center}
+    header h1 {font-size:16px;margin:0;font-weight:600}
+    .score {margin-left:auto;font-weight:bold}
+    .wrap {max-width:1100px;margin:16px auto;padding:0 16px}
+    textarea {width:100%;min-height:200px;padding:10px;border:1px solid #ccc;border-radius:8px}
+    button {padding:8px 14px;margin:8px 6px 20px 0;border:0;border-radius:6px;background:#1a73e8;color:#fff;cursor:pointer}
+    button.secondary {background:#6c757d}
+    .grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+    .card {background:#fff;border:1px solid #eee;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);display:flex;flex-direction:column}
+    .q {padding:12px;border-bottom:1px solid #f1f1f1}
+    .q h3 {margin:0;font-size:15px}
+    .opts {padding:12px;display:flex;flex-direction:column;gap:8px}
+    .opt {border:1px solid #ccc;border-radius:6px;padding:8px;background:#fafafa;cursor:pointer;text-align:left}
+    .opt.correct {border-color:#218838;background:#28a745;color:#fff}
+    .opt.wrong {border-color:#c82333;background:#dc3545;color:#fff}
+    .opt.disabled {opacity:.6;pointer-events:none}
+    .ans {border-top:1px dashed #ddd;padding:12px;display:none;font-size:14px;background:#fcfcff;white-space:pre-wrap}
+    .ans.show {display:block}
+  </style>
+  <!-- Load MathJax for LaTeX rendering -->
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
-
 <body>
-    <header>
-        <h1>GATE MCQ Builder</h1>
-        <div class="score">Score: <span id="score">0</span></div>
-    </header>
-    <div class="wrap">
-        <textarea id="input" placeholder="Paste MCQ prompt here..."></textarea><br>
-        <button id="buildBtn">Build Quiz</button>
-        <button id="resetBtn" class="secondary">Reset</button>
-        <div id="quiz" class="grid"></div>
-    </div>
-    <script>
-        (() => {
-            const scoreEl = document.getElementById('score'), quizEl = document.getElementById('quiz'),
-                inputEl = document.getElementById('input');
-            let score = 0;
-            const setScore = delta => { score = Math.round((score + delta) * 1000) / 1000; scoreEl.textContent = score };
-            document.getElementById('resetBtn').onclick = () => { score = 0; scoreEl.textContent = 0; quizEl.innerHTML = '' };
-            document.getElementById('buildBtn').onclick = () => {
-                score = 0; scoreEl.textContent = 0; quizEl.innerHTML = '';
-                const data = parsePrompt(inputEl.value.trim()); renderQuiz(data); MathJax.typesetPromise();
-            };
-            function parsePrompt(raw) {
-                const res = { questions: [], answers: {} };
-                const parts = raw.split(/##+\s*Answer Key/i);
-                const qPart = parts[0] || raw, aPart = parts[1] || '';
-                const blocks = qPart.split(/---|\n\s*\n/g).filter(b => /Q\d+/i.test(b));
-                blocks.forEach(b => {
-                    const qm = b.match(/Q\s*(\d+)\.\s*([\s\S]*)/i);
-                    if (!qm) return; const qnum = parseInt(qm[1]), qtext = qm[2].split(/\n/)[0];
-                    const opts = {}, optRe = /^\s*\(?([A-D])\)?[.)]\s*([\s\S]+)/i;
-                    b.split('\n').forEach(l => { const m = l.match(optRe); if (m) opts[m[1].toUpperCase()] = m[2] });
-                    if (Object.keys(opts).length === 4)
-                        res.questions.push({ qnum, qtext, options: ['A', 'B', 'C', 'D'].map(k => ({ key: k, text: opts[k] })) });
-                });
-                aPart.split(/\n\s*\n|\n/).forEach(l => {
-                    const m = l.match(/Q\s*(\d+)\s*→\s*Ans:?\s*\(?([A-D])\)?/i);
-                    if (!m) return;
-                    const qn = parseInt(m[1]), ans = m[2].toUpperCase();
-                    const expMatch = l.match(/Exp:?\**\s*([\s\S]*?)(?=\*\*|$)/i);
-                    const scMatch = l.match(/Shortcut:?\**\s*([\s\S]*?)(?=\*\*|$)/i);
-                    const lvlMatch = l.match(/Level:?\**\s*(\w+)/i);
-                    const year = (/New Q/i.test(l) ? 'New' : '');
-                    const marksMatch = l.match(/Marks[:\-]\s*(\d+)/i);
-                    res.answers[qn] = {
-                        correct: ans,
-                        exp: expMatch ? expMatch[1].trim() : '',
-                        shortcut: scMatch ? scMatch[1].trim() : '',
-                        level: lvlMatch ? lvlMatch[1] : '',
-                        year,
-                        marks: marksMatch ? parseInt(marksMatch[1]) : 1
-                    };
-                });
-                return res;
-            }
-            function renderQuiz(data) {
-                data.questions.sort((a, b) => a.qnum - b.qnum).forEach(q => {
-                    const card = document.createElement('div'); card.className = 'card';
-                    const qd = document.createElement('div'); qd.className = 'q'; qd.innerHTML = `<h3>Q${q.qnum}. ${q.qtext}</h3>`;
-                    card.appendChild(qd);
-                    const opts = document.createElement('div'); opts.className = 'opts';
-                    const ansData = data.answers[q.qnum] || {};
-                    q.options.forEach(opt => {
-                        const btn = document.createElement('div'); btn.className = 'opt'; btn.innerHTML = `(${opt.key}) ${opt.text}`;
-                        btn.onclick = () => {
-                            if (btn.classList.contains('disabled')) return;
-                            opts.querySelectorAll('.opt').forEach(b => b.classList.add('disabled'));
-                            const cKey = ansData.correct;
-                            if (opt.key === cKey) {
-                                btn.classList.add('correct');
-                                setScore(ansData.marks || 1);
-                            } else {
-                                btn.classList.add('wrong');
-                                const corr = [...opts.children].find(b => b.textContent.trim().startsWith('(' + cKey + ')'));
-                                if (corr) corr.classList.add('correct');
-                                if (ansData.marks === 2) setScore(-2 / 3); else setScore(-1 / 3);
-                            }
-                            ans.classList.add('show'); MathJax.typesetPromise();
-                        };
-                        opts.appendChild(btn);
-                    });
-                    card.appendChild(opts);
-                    const ans = document.createElement('div'); ans.className = 'ans';
-                    ans.innerHTML = `<div><b>Answer:</b> (${ansData.correct || '?'}) ${ansData.year || ''} | Marks:${ansData.marks || 1} ${ansData.level ? '| Level:' + ansData.level : ''}</div>
-                     ${ansData.exp ? '<div><b>Exp:</b> ' + ansData.exp + '</div>' : ''}
-                     ${ansData.shortcut ? '<div><b>Shortcut:</b> ' + ansData.shortcut + '</div>' : ''}`;
-                    card.appendChild(ans); quizEl.appendChild(card);
-                });
-                MathJax.typesetPromise();
-            }
-        })();
-    </script>
-</body>
+  <header>
+    <h1>GATE MCQ Builder</h1>
+    <div class="score">Score: <span id="score">0</span></div>
+  </header>
+  <div class="wrap">
+    <textarea id="input" placeholder="Paste MCQ prompt here..."></textarea><br>
+    <button id="buildBtn">Build Quiz</button>
+    <button id="resetBtn" class="secondary">Reset</button>
+    <div id="quiz" class="grid"></div>
+  </div>
+  <script>
+  (() => {
+    const scoreEl=document.getElementById('score'),quizEl=document.getElementById('quiz'),inputEl=document.getElementById('input');
+    let score=0;
+    const setScore=delta=>{score=Math.round((score+delta)*1000)/1000;scoreEl.textContent=score};
+    document.getElementById('resetBtn').onclick=()=>{score=0;scoreEl.textContent=0;quizEl.innerHTML=''};
+    document.getElementById('buildBtn').onclick=()=>{
+      score=0;scoreEl.textContent=0;quizEl.innerHTML='';
+      const data=parsePrompt(inputEl.value.trim());renderQuiz(data)
+    };
 
+    function parsePrompt(raw){
+      const res={questions:[],answers:{}};
+      const parts=raw.split(/##+\s*Answer Key/i);
+      const qPart=parts[0]||raw,aPart=parts[1]||'';
+      const blocks=qPart.split(/\n\*{3,}\n/g).filter(b=>/Q\d+/i.test(b));
+
+      blocks.forEach(b=>{
+        const qm=b.match(/Q\s*(\d+)\.?\s*(.*)/i);
+        if(!qm)return;
+        const qnum=parseInt(qm[1]);
+        let qtext=qm[2].trim();
+        qtext=qtext.replace(/^#+/,'').trim();
+        const opts={},optRe=/^\s*\(?([A-D])\)?[.)]?\s*(.+)$/i;
+        b.split('\n').forEach(l=>{const m=l.match(optRe);if(m)opts[m[1].toUpperCase()]=m[2].trim()});
+        if(Object.keys(opts).length===4)
+          res.questions.push({qnum,qtext,options:['A','B','C','D'].map(k=>({key:k,text:opts[k]}))});
+      });
+
+      aPart.split(/\n/).forEach(l=>{
+        const m=l.match(/^Q\s*(\d+)\s*[\u2192\-:]*\s*Ans[:\-]\s*([A-D])/i);
+        if(!m)return;
+        const qn=parseInt(m[1]),ans=m[2].toUpperCase();
+        const exp=(l.match(/Exp[:\-]\s*(.*?)(?:\||$)/i)||[])[1]||'';
+        const sc=(l.match(/Shortcut[:\-]\s*(.*?)(?:\||$)/i)||[])[1]||'';
+        const lvl=(l.match(/Level[:\-]\s*(\w+)/i)||[])[1]||'';
+        const year=(l.match(/GATE\s*\d{4}/i)||[])[0]||(/New Q/i.test(l)?'New':'');
+        const marks=(l.match(/Marks[:\-]\s*(\d+)/i)||[])[1]||'1';
+        res.answers[qn]={correct:ans,exp,shortcut:sc,level:lvl,year,marks:parseInt(marks)};
+      });
+      return res;
+    }
+
+    function renderQuiz(data){
+      data.questions.sort((a,b)=>a.qnum-b.qnum).forEach(q=>{
+        const card=document.createElement('div');card.className='card';
+        const qd=document.createElement('div');qd.className='q';qd.innerHTML=`<h3>Q${q.qnum}. ${q.qtext}</h3>`;card.appendChild(qd);
+        const opts=document.createElement('div');opts.className='opts';
+        const ansData=data.answers[q.qnum]||{};
+        q.options.forEach(opt=>{
+          const btn=document.createElement('div');btn.className='opt';btn.innerHTML=`(${opt.key}) ${opt.text}`;
+          btn.onclick=()=>{
+            if(btn.classList.contains('disabled'))return;
+            opts.querySelectorAll('.opt').forEach(b=>b.classList.add('disabled'));
+            const cKey=ansData.correct;
+            if(opt.key===cKey){btn.classList.add('correct');setScore(ansData.marks||1)}
+            else {btn.classList.add('wrong');const corr=[...opts.children].find(b=>b.textContent.trim().startsWith('('+cKey+')'));if(corr)corr.classList.add('correct');if(ansData.marks===2)setScore(-2/3);else setScore(-1/3)}
+            ans.classList.add('show');
+            if(window.MathJax){MathJax.typesetPromise([card]);}
+          };
+          opts.appendChild(btn);
+        });
+        card.appendChild(opts);
+        const ans=document.createElement('div');ans.className='ans';
+        ans.innerHTML=`<div><b>Answer:</b> (${ansData.correct||'?'}) ${ansData.year||''} | Marks:${ansData.marks||1} ${ansData.level?('| Level:'+ansData.level):''}</div>
+        ${ansData.exp?('<div><b>Exp:</b> '+ansData.exp+'</div>'):''}
+        ${ansData.shortcut?('<div><b>Shortcut:</b> '+ansData.shortcut+'</div>'):''}`;
+        card.appendChild(ans);quizEl.appendChild(card);
+      });
+      if(window.MathJax){MathJax.typesetPromise();}
+    }
+  })();
+  </script>
+</body>
 </html>
