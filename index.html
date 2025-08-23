@@ -19,11 +19,13 @@
     .q h3 {margin:0;font-size:15px}
     .opts {padding:12px;display:flex;flex-direction:column;gap:8px}
     .opt {border:1px solid #ccc;border-radius:6px;padding:8px;background:#fafafa;cursor:pointer;text-align:left}
+    .opt.selected {border-color:#1a73e8;background:#e8f0fe}
     .opt.correct {border-color:#218838;background:#28a745;color:#fff}
     .opt.wrong {border-color:#c82333;background:#dc3545;color:#fff}
     .opt.disabled {opacity:.6;pointer-events:none}
     .ans {border-top:1px dashed #ddd;padding:12px;display:none;font-size:14px;background:#fcfcff;white-space:pre-wrap}
     .ans.show {display:block}
+    #submitBtn {display:block;margin:20px auto;padding:12px 20px;font-size:16px}
   </style>
   <!-- Load MathJax for LaTeX rendering -->
   <script>
@@ -44,35 +46,48 @@
   </div>
   <script>
   (() => {
-    const scoreEl=document.getElementById('score'),quizEl=document.getElementById('quiz'),inputEl=document.getElementById('input');
-    let score=0;
-    const setScore=delta=>{score=Math.round((score+delta)*1000)/1000;scoreEl.textContent=score};
-    document.getElementById('resetBtn').onclick=()=>{score=0;scoreEl.textContent=0;quizEl.innerHTML=''};
+    const scoreEl=document.getElementById('score'),
+          quizEl=document.getElementById('quiz'),
+          inputEl=document.getElementById('input');
+    let score=0, responses={}, quizData=null;
+
+    const setScore=val=>{score=Math.round(val*1000)/1000;scoreEl.textContent=score};
+
+    document.getElementById('resetBtn').onclick=()=>{
+      score=0;setScore(0);quizEl.innerHTML='';
+      document.getElementById('submitBtn')?.remove();
+    };
+
     document.getElementById('buildBtn').onclick=()=>{
-      score=0;scoreEl.textContent=0;quizEl.innerHTML='';
-      const data=parsePrompt(inputEl.value.trim());renderQuiz(data)
+      score=0;setScore(0);quizEl.innerHTML='';
+      responses={};
+      quizData=parsePrompt(inputEl.value.trim());
+      renderQuiz(quizData);
+      addSubmitButton();
     };
 
     function parsePrompt(raw){
       const res={questions:[],answers:{}};
-      const parts=raw.split(/##+\s*Answer Key/i);
+      const parts=raw.split(/Answer Key\s*&?\s*Explanations/i);
       const qPart=parts[0]||raw,aPart=parts[1]||'';
-      const blocks=qPart.split(/\n\*{3,}\n/g).filter(b=>/Q\d+/i.test(b));
+      const blocks=qPart.split(/(?:\n\*{3,}\n|⸻)/g).filter(b=>/Q\d+/i.test(b));
 
       blocks.forEach(b=>{
         const qm=b.match(/Q\s*(\d+)\.?\s*(.*)/i);
         if(!qm)return;
         const qnum=parseInt(qm[1]);
         let qtext=qm[2].trim();
-        qtext=qtext.replace(/^#+/,'').trim();
         const opts={},optRe=/^\s*\(?([A-D])\)?[.)]?\s*(.+)$/i;
-        b.split('\n').forEach(l=>{const m=l.match(optRe);if(m)opts[m[1].toUpperCase()]=m[2].trim()});
+        b.split('\n').forEach(l=>{
+          const m=l.match(optRe);
+          if(m)opts[m[1].toUpperCase()]=m[2].trim();
+        });
         if(Object.keys(opts).length===4)
           res.questions.push({qnum,qtext,options:['A','B','C','D'].map(k=>({key:k,text:opts[k]}))});
       });
 
       aPart.split(/\n/).forEach(l=>{
-        const m=l.match(/^Q\s*(\d+)\s*[\u2192\-:]*\s*Ans[:\-]\s*([A-D])/i);
+        const m=l.match(/^Q\s*(\d+)\s*[→\-\:]?\s*Ans[:\-]?\s*([A-D])/i);
         if(!m)return;
         const qn=parseInt(m[1]),ans=m[2].toUpperCase();
         const exp=(l.match(/Exp[:\-]\s*(.*?)(?:\||$)/i)||[])[1]||'';
@@ -88,30 +103,73 @@
     function renderQuiz(data){
       data.questions.sort((a,b)=>a.qnum-b.qnum).forEach(q=>{
         const card=document.createElement('div');card.className='card';
-        const qd=document.createElement('div');qd.className='q';qd.innerHTML=`<h3>Q${q.qnum}. ${q.qtext}</h3>`;card.appendChild(qd);
+        const qd=document.createElement('div');qd.className='q';
+        qd.innerHTML=`<h3>Q${q.qnum}. ${q.qtext}</h3>`;
+        card.appendChild(qd);
+
         const opts=document.createElement('div');opts.className='opts';
-        const ansData=data.answers[q.qnum]||{};
         q.options.forEach(opt=>{
-          const btn=document.createElement('div');btn.className='opt';btn.innerHTML=`(${opt.key}) ${opt.text}`;
+          const btn=document.createElement('div');
+          btn.className='opt';
+          btn.innerHTML=`(${opt.key}) ${opt.text}`;
           btn.onclick=()=>{
             if(btn.classList.contains('disabled'))return;
-            opts.querySelectorAll('.opt').forEach(b=>b.classList.add('disabled'));
-            const cKey=ansData.correct;
-            if(opt.key===cKey){btn.classList.add('correct');setScore(ansData.marks||1)}
-            else {btn.classList.add('wrong');const corr=[...opts.children].find(b=>b.textContent.trim().startsWith('('+cKey+')'));if(corr)corr.classList.add('correct');if(ansData.marks===2)setScore(-2/3);else setScore(-1/3)}
-            ans.classList.add('show');
-            if(window.MathJax){MathJax.typesetPromise([card]);}
+            responses[q.qnum]=opt.key;
+            opts.querySelectorAll('.opt').forEach(b=>b.classList.remove('selected'));
+            btn.classList.add('selected');
           };
           opts.appendChild(btn);
         });
         card.appendChild(opts);
+
         const ans=document.createElement('div');ans.className='ans';
-        ans.innerHTML=`<div><b>Answer:</b> (${ansData.correct||'?'}) ${ansData.year||''} | Marks:${ansData.marks||1} ${ansData.level?('| Level:'+ansData.level):''}</div>
-        ${ansData.exp?('<div><b>Exp:</b> '+ansData.exp+'</div>'):''}
-        ${ansData.shortcut?('<div><b>Shortcut:</b> '+ansData.shortcut+'</div>'):''}`;
-        card.appendChild(ans);quizEl.appendChild(card);
+        card.appendChild(ans);
+        quizEl.appendChild(card);
       });
       if(window.MathJax){MathJax.typesetPromise();}
+    }
+
+    function addSubmitButton(){
+      const btn=document.createElement('button');
+      btn.id='submitBtn';btn.textContent='Submit Test';
+      btn.onclick=()=>showResults();
+      quizEl.appendChild(btn);
+    }
+
+    function showResults(){
+      score=0;
+      quizData.questions.forEach(q=>{
+        const ansData=quizData.answers[q.qnum]||{};
+        const card=quizEl.querySelectorAll('.card')[q.qnum-1];
+        const opts=card.querySelectorAll('.opt');
+        const userAns=responses[q.qnum];
+        opts.forEach(optEl=>{
+          const key=optEl.textContent.trim()[1]; // (A)
+          optEl.classList.add('disabled');
+          if(key===ansData.correct){
+            optEl.classList.add('correct');
+          }
+          if(userAns===key && key!==ansData.correct){
+            optEl.classList.add('wrong');
+          }
+        });
+
+        // scoring
+        if(userAns===ansData.correct) score+=ansData.marks||1;
+        else if(userAns){
+          if(ansData.marks===2) score+=-2/3;
+          else score+=-1/3;
+        }
+
+        const ansDiv=card.querySelector('.ans');
+        ansDiv.classList.add('show');
+        ansDiv.innerHTML=`<div><b>Answer:</b> (${ansData.correct||'?'}) ${ansData.year||''} | Marks:${ansData.marks||1} ${ansData.level?('| Level:'+ansData.level):''}</div>
+        ${ansData.exp?('<div><b>Exp:</b> '+ansData.exp+'</div>'):''}
+        ${ansData.shortcut?('<div><b>Shortcut:</b> '+ansData.shortcut+'</div>'):''}`;
+      });
+      setScore(score);
+      if(window.MathJax){MathJax.typesetPromise();}
+      document.getElementById('submitBtn').disabled=true;
     }
   })();
   </script>
